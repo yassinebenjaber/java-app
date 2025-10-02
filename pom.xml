@@ -18,6 +18,17 @@
     <name>my-app</name>
     <description>Demo project for Spring Boot DevSecOps pipeline</description>
 
+    <distributionManagement>
+        <repository>
+            <id>nexus-releases</id>
+            <url>http://localhost:8081/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <url>http://localhost:8081/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <java.version>11</java.version>
         <sonar.projectKey>my-first-java-app</sonar.projectKey>

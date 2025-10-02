@@ -5,7 +5,6 @@ pipeline {
     }
 
     environment {
-        // Global variables that are NOT secrets
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
@@ -61,21 +60,9 @@ pipeline {
 
         stage('Publish Artifact to Nexus') {
             steps {
-                nexusArtifactUploader(
-                    nexusVersion: 'NEXUS3',
-                    protocol: 'http',
-                    nexusUrl: NEXUS_URL,
-                    groupId: 'com.devsecops.jobprep',
-                    version: "1.${env.BUILD_NUMBER}",
-                    repository: 'maven-releases',
-                    credentialsId: NEXUS_CREDENTIALS_ID,
-                    artifacts: [
-                        [artifactId: 'my-app',
-                         classifier: '',
-                         file: "target/my-app-0.0.1-SNAPSHOT.jar",
-                         type: 'jar']
-                    ]
-                )
+                withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                    sh 'mvn deploy -Dmaven.test.skip=true --settings settings.xml'
+                }
             }
         }
 
