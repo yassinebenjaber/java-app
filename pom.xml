@@ -8,9 +8,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.5</version>
-        <relativePath/> <!-- lookup parent from repository -->
-    </parent>
+        <version>2.7.18</version>
+        <relativePath/> </parent>
 
     <groupId>com.devsecops.jobprep</groupId>
     <artifactId>my-app</artifactId>
@@ -44,25 +43,25 @@
 
     <build>
         <plugins>
-            <!-- Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!-- SonarQube Plugin -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.9.1.2184</version>
             </plugin>
 
-            <!-- OWASP Dependency Check -->
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
                 <version>12.1.0</version>
                 <configuration>
+                    <ossindexAnalyzerEnabled>true</ossindexAnalyzerEnabled>
+                    <ossindexUsername>${env.OSSINDEX_USERNAME}</ossindexUsername>
+                    <ossindexPassword>${env.OSSINDEX_TOKEN}</ossindexPassword>
                     <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
                     <failBuildOnCVSS>11</failBuildOnCVSS>
                 </configuration>
