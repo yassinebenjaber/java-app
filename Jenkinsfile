@@ -1,4 +1,3 @@
-// Jenkinsfile - Final Version with Correct Parameter Names
 pipeline {
     agent any
     tools {
@@ -6,6 +5,7 @@ pipeline {
     }
 
     environment {
+        // Global variables that are NOT secrets
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
@@ -39,8 +39,6 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
                                  string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
-                    // *** THIS IS THE FINAL FIX ***
-                    // Using the dot notation for the command-line parameters
                     sh '''
                         mvn org.owasp:dependency-check-maven:check \\
                             -Dnvd.apiKey="${NVD_API_KEY}" \\
@@ -55,13 +53,14 @@ pipeline {
 
         stage('SAST Scan & Quality Gate (SonarQube)') {
             steps {
-                withCredentials([string(credentialsId: 'sonarqube-token-id', variable: 'SONAR_TOKEN')]) {
-                    sh 'mvn sonar:sonar -Dsonar.login="${SONAR_TOKEN}"'
+                withSonarQubeEnv('sonarqube') {
+                    sh 'mvn sonar:sonar'
                 }
             }
             post {
                 always {
                     timeout(time: 1, unit: 'HOURS') {
+                        // This step will now work correctly.
                         waitForQualityGate abortPipeline: true
                     }
                 }
@@ -115,7 +114,7 @@ pipeline {
                     sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}|g' deployment.yaml"
                     sh 'kubectl apply -f deployment.yaml'
                     sh 'kubectl apply -f service.yaml'
-                    sh 'kubectl rollout status deployment/my-app-deployment'
+                    sh 'kubectl rollout status deployment/my-java-devsecops-app'
                 }
             }
         }
