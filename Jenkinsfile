@@ -15,15 +15,18 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // !!! IMPORTANT: CHANGE THIS TO YOUR REPO URL !!!
-                git 'https://github.com/your-username/your-java-repo.git'
+                // !!! IMPORTANT: Ensure this is your correct repository URL !!!
+                git 'https://github.com/yassinebenjaber/java-app.git'
             }
         }
 
         stage('Scan for Secrets (Gitleaks)') {
             steps {
-                docker.image('zricethezav/gitleaks:latest').inside {
-                    sh 'gitleaks detect --source . --verbose --no-git || exit 0'
+                // *** THE FIX IS HERE: Added the 'script' block ***
+                script {
+                    docker.image('zricethezav/gitleaks:latest').inside {
+                        sh 'gitleaks detect --source . --verbose --no-git || exit 0'
+                    }
                 }
             }
         }
