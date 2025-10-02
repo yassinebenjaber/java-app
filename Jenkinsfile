@@ -8,7 +8,7 @@ pipeline {
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
-        OSSINDEX_USERNAME = 'yassinejaber99@outlook.com' 
+        OSSINDEX_USERNAME = 'yassinejaber99@outlook.com'
     }
 
     stages {
@@ -21,8 +21,8 @@ pipeline {
         stage('Scan for Secrets (Gitleaks)') {
             steps {
                 sh '''
-                    docker run --rm --name gitleaks-scanner \\
-                        -v $PWD:/workspace \\
+                    docker run --rm --name gitleaks-scanner \
+                        -v $PWD:/workspace \
                         zricethezav/gitleaks:latest detect --source /workspace --verbose --no-git
                 '''
             }
@@ -39,11 +39,11 @@ pipeline {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
                                  string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
                     sh '''
-                        mvn org.owasp:dependency-check-maven:check \\
-                            -Dnvd.apiKey="${NVD_API_KEY}" \\
-                            -Dossindex.analyzer.enabled=true \\
-                            -Dossindex.username="${OSSINDEX_USERNAME}" \\
-                            -Dossindex.apiToken="${OSSINDEX_TOKEN}" \\
+                        mvn org.owasp:dependency-check-maven:check \
+                            -Dnvd.apiKey="${NVD_API_KEY}" \
+                            -Dossindex.analyzer.enabled=true \
+                            -Dossindex.username="${OSSINDEX_USERNAME}" \
+                            -Dossindex.apiToken="${OSSINDEX_TOKEN}" \
                             -DfailBuildOnCVSS=11.0
                     '''
                 }
@@ -90,10 +90,16 @@ pipeline {
                 script {
                     sh 'minikube status || minikube start --driver=docker'
                     sh 'eval $(minikube -p minikube docker-env)'
+                    
+                    // Update deployment file with new image
                     sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}|g' deployment.yaml"
+
+                    // Apply manifests
                     sh 'kubectl apply -f deployment.yaml'
                     sh 'kubectl apply -f service.yaml'
-                    sh 'kubectl rollout status deployment/my-java-devsecops-app'
+
+                    // Check rollout of deployment
+                    sh 'kubectl rollout status deployment/my-app-deployment'
                 }
             }
         }
