@@ -10,28 +10,29 @@ pipeline {
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         SONAR_TOKEN = credentials('sonarqube-token-id')
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
+        
+        // *** ADDED THESE THREE LINES FOR OWASP SCANNING ***
+        OSSINDEX_USERNAME = 'your-email@example.com' // <-- IMPORTANT: Replace with your Sonatype email
+        OSSINDEX_TOKEN = credentials('ossindex-token')
+        NVD_API_KEY = credentials('nvd-api-key')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // !!! IMPORTANT: Ensure this is your correct repository URL !!!
                 git 'https://github.com/yassinebenjaber/java-app.git'
             }
         }
 
         stage('Scan for Secrets (Gitleaks)') {
             steps {
-                sh '''
-                    docker run --rm \
-                        -v $PWD:/workspace \
-                        -w /workspace \
-                        zricethezav/gitleaks:latest \
-                        detect --source . --verbose --no-git || exit 0
-                '''
+                script {
+                    docker.image('zricethezav/gitleaks:latest').inside {
+                        sh 'gitleaks detect --source . --verbose --no-git || exit 0'
+                    }
+                }
             }
         }
-
 
         stage('Build with Maven') {
             steps {
@@ -40,14 +41,11 @@ pipeline {
         }
 
         stage('SCA Scan (OWASP Dependency Check)') {
-            environment {
-                NVD_API_KEY = credentials('NVD_API_KEY')
-            }
             steps {
-                sh 'mvn clean verify org.owasp:dependency-check-maven:check'
+                // Simplified this command - no need to 'clean verify' again
+                sh 'mvn org.owasp:dependency-check-maven:check'
             }
         }
-
 
         stage('SAST Scan & Quality Gate (SonarQube)') {
             steps {
