@@ -1,4 +1,4 @@
-// Jenkinsfile - Java/Maven Edition
+// Jenkinsfile - Final Version
 pipeline {
     agent any
     tools {
@@ -6,15 +6,11 @@ pipeline {
     }
 
     environment {
+        // Global variables that are NOT secrets
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
-        SONAR_TOKEN = credentials('sonarqube-token-id')
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
-        
-        // Credentials for OWASP Dependency-Check
         OSSINDEX_USERNAME = 'your-email@example.com' // <-- IMPORTANT: Replace with your Sonatype email
-        OSSINDEX_TOKEN = credentials('ossindex-token')
-        NVD_API_KEY = credentials('nvd-api-key')
     }
 
     stages {
@@ -26,7 +22,6 @@ pipeline {
 
         stage('Scan for Secrets (Gitleaks)') {
             steps {
-                // This command is best for short-lived scanning tasks.
                 sh '''
                     docker run --rm --name gitleaks-scanner \\
                         -v $PWD:/workspace \\
@@ -37,15 +32,23 @@ pipeline {
 
         stage('Build & SCA Scan') {
             steps {
-                // This single command builds the app and runs the OWASP scan,
-                // using the credentials from the environment block.
-                sh 'mvn clean install org.owasp:dependency-check-maven:check'
+                // *** THIS IS THE FIX ***
+                // This block securely injects credentials as environment variables
+                // for the Maven command to use.
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
+                                 string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
+                    
+                    sh 'mvn clean install org.owasp:dependency-check-maven:check'
+                }
             }
         }
 
         stage('SAST Scan & Quality Gate (SonarQube)') {
             steps {
-                sh 'mvn sonar:sonar'
+                // The SonarQube token is handled by the Sonar plugin, so it's managed differently.
+                withCredentials([string(credentialsId: 'sonarqube-token-id', variable: 'SONAR_TOKEN')]) {
+                    sh 'mvn sonar:sonar'
+                }
             }
             post {
                 always {
