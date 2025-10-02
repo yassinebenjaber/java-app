@@ -9,7 +9,7 @@ pipeline {
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
-        OSSINDEX_USERNAME = 'your-email@example.com' // <-- IMPORTANT: Replace with your Sonatype email
+        OSSINDEX_USERNAME = 'yassinejaber99@outlook.com' 
     }
 
     stages {
