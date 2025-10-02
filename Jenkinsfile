@@ -1,8 +1,8 @@
-// Jenkinsfile - Final Version
+// Jenkinsfile - Final Corrected Version
 pipeline {
     agent any
     tools {
-        maven 'Maven-3.8.6' // The name from Jenkins Global Tool Configuration
+        maven 'Maven-3.8.6'
     }
 
     environment {
@@ -30,24 +30,35 @@ pipeline {
             }
         }
 
-        stage('Build & SCA Scan') {
+        stage('Build') {
             steps {
-                // *** THIS IS THE FIX ***
-                // This block securely injects credentials as environment variables
-                // for the Maven command to use.
+                sh 'mvn clean install'
+            }
+        }
+
+        stage('SCA Scan (OWASP Dependency Check)') {
+            steps {
+                // This block securely injects credentials as shell environment variables
+                // and passes them directly to Maven using the -D flag. This is the fix.
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
                                  string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
-                    
-                    sh 'mvn clean install org.owasp:dependency-check-maven:check'
+                    sh '''
+                        mvn org.owasp:dependency-check-maven:check \\
+                            -DnvdApiKey="${NVD_API_KEY}" \\
+                            -DossindexAnalyzerEnabled=true \\
+                            -DossindexUsername="${OSSINDEX_USERNAME}" \\
+                            -DossindexApiToken="${OSSINDEX_TOKEN}" \\
+                            -DfailBuildOnCVSS=7.0
+                    '''
                 }
             }
         }
 
         stage('SAST Scan & Quality Gate (SonarQube)') {
             steps {
-                // The SonarQube token is handled by the Sonar plugin, so it's managed differently.
+                // Securely injects the SonarQube token and passes it directly to Maven.
                 withCredentials([string(credentialsId: 'sonarqube-token-id', variable: 'SONAR_TOKEN')]) {
-                    sh 'mvn sonar:sonar'
+                    sh 'mvn sonar:sonar -Dsonar.login="${SONAR_TOKEN}"'
                 }
             }
             post {

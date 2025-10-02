@@ -9,7 +9,8 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>2.7.18</version>
-        <relativePath/> </parent>
+        <relativePath/>
+    </parent>
 
     <groupId>com.devsecops.jobprep</groupId>
     <artifactId>my-app</artifactId>
@@ -58,21 +59,7 @@
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
                 <version>9.2.0</version>
-                <configuration>
-                    <ossindexAnalyzerEnabled>true</ossindexAnalyzerEnabled>
-                    <ossindexUsername>${env.OSSINDEX_USERNAME}</ossindexUsername>
-                    <ossindexPassword>${env.OSSINDEX_TOKEN}</ossindexPassword>
-                    <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
-                    <failBuildOnCVSS>11</failBuildOnCVSS>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+                </plugin>
         </plugins>
     </build>
 </project>
