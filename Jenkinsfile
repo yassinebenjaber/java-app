@@ -25,7 +25,12 @@ pipeline {
                 // *** THE FIX IS HERE: Added the 'script' block ***
                 script {
                     docker.image('zricethezav/gitleaks:latest').inside {
-                        sh 'gitleaks detect --source . --verbose --no-git || exit 0'
+                        sh '''
+                            gitleaks detect \
+                                --source . \
+                                --verbose \
+                                --no-git || exit 0
+                        '''
                     }
                 }
             }
