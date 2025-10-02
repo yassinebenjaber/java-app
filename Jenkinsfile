@@ -40,22 +40,14 @@ pipeline {
         }
 
         stage('SCA Scan (OWASP Dependency Check)') {
-            steps {
-                sh 'mvn org.owasp:dependency-check-maven:check'
+            environment {
+                NVD_API_KEY = credentials('NVD_API_KEY')
             }
-            post {
-                always {
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'target',
-                        reportFiles: 'dependency-check-report.html',
-                        reportName: 'OWASP Dependency-Check Report'
-                    ])
-                }
+            steps {
+                sh 'mvn clean verify org.owasp:dependency-check-maven:check'
             }
         }
+
 
         stage('SAST Scan & Quality Gate (SonarQube)') {
             steps {
