@@ -57,7 +57,7 @@
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
-                <version>12.1.0</version>
+                <version>9.2.0</version>
                 <configuration>
                     <ossindexAnalyzerEnabled>true</ossindexAnalyzerEnabled>
                     <ossindexUsername>${env.OSSINDEX_USERNAME}</ossindexUsername>
