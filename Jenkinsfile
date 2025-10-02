@@ -1,4 +1,3 @@
-// Jenkinsfile - Java/Maven Edition
 pipeline {
     agent any
     tools {
@@ -10,8 +9,6 @@ pipeline {
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         SONAR_TOKEN = credentials('sonarqube-token-id')
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
-        
-        // *** ADDED THESE THREE LINES FOR OWASP SCANNING ***
         OSSINDEX_USERNAME = 'your-email@example.com' // <-- IMPORTANT: Replace with your Sonatype email
         OSSINDEX_TOKEN = credentials('ossindex-token')
         NVD_API_KEY = credentials('nvd-api-key')
@@ -26,11 +23,15 @@ pipeline {
 
         stage('Scan for Secrets (Gitleaks)') {
             steps {
-                script {
-                    docker.image('zricethezav/gitleaks:latest').inside {
-                        sh 'gitleaks detect --source . --verbose --no-git || exit 0'
-                    }
-                }
+                // *** THIS STAGE IS NOW FIXED ***
+                // This command is better for short-lived scanning tasks. It directly runs the
+                // container and mounts the current Jenkins workspace ($PWD) into the /workspace
+                // directory inside the container for scanning.
+                sh '''
+                    docker run --rm --name gitleaks-scanner \\
+                        -v $PWD:/workspace \\
+                        zricethezav/gitleaks:latest detect --source /workspace --verbose --no-git
+                '''
             }
         }
 
@@ -42,7 +43,6 @@ pipeline {
 
         stage('SCA Scan (OWASP Dependency Check)') {
             steps {
-                // Simplified this command - no need to 'clean verify' again
                 sh 'mvn org.owasp:dependency-check-maven:check'
             }
         }
