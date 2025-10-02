@@ -22,19 +22,16 @@ pipeline {
 
         stage('Scan for Secrets (Gitleaks)') {
             steps {
-                // *** THE FIX IS HERE: Added the 'script' block ***
-                script {
-                    docker.image('zricethezav/gitleaks:latest').inside {
-                        sh '''
-                            gitleaks detect \
-                                --source . \
-                                --verbose \
-                                --no-git || exit 0
-                        '''
-                    }
-                }
+                sh '''
+                    docker run --rm \
+                        -v $PWD:/workspace \
+                        -w /workspace \
+                        zricethezav/gitleaks:latest \
+                        detect --source . --verbose --no-git || exit 0
+                '''
             }
         }
+
 
         stage('Build with Maven') {
             steps {
