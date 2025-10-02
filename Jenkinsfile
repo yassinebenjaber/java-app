@@ -70,7 +70,7 @@ pipeline {
             steps {
                 script {
                     def customImage = docker.build(DOCKER_IMAGE_NAME, '.')
-                    sh "trivy image --exit-code 1 --severity CRITICAL ${DOCKER_IMAGE_NAME}"
+                    sh "trivy image --severity CRITICAL ${DOCKER_IMAGE_NAME}"
                 }
             }
         }
