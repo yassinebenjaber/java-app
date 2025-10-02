@@ -1,3 +1,4 @@
+// Jenkinsfile - Final Version with Correct Parameter Names
 pipeline {
     agent any
     tools {
@@ -5,7 +6,6 @@ pipeline {
     }
 
     environment {
-        // Global variables that are NOT secrets
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
@@ -39,12 +39,14 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
                                  string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
+                    // *** THIS IS THE FINAL FIX ***
+                    // Using the dot notation for the command-line parameters
                     sh '''
                         mvn org.owasp:dependency-check-maven:check \\
-                            -DnvdApiKey="${NVD_API_KEY}" \\
-                            -DossindexAnalyzerEnabled=true \\
-                            -DossindexUsername="${OSSINDEX_USERNAME}" \\
-                            -DossindexApiToken="${OSSINDEX_TOKEN}" \\
+                            -Dnvd.apiKey="${NVD_API_KEY}" \\
+                            -Dossindex.analyzer.enabled=true \\
+                            -Dossindex.username="${OSSINDEX_USERNAME}" \\
+                            -Dossindex.apiToken="${OSSINDEX_TOKEN}" \\
                             -DfailBuildOnCVSS=7.0
                     '''
                 }
