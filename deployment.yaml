@@ -14,6 +14,21 @@ spec:
     spec:
       containers:
       - name: my-app
-        image: localhost:5000/docker-hosted/my-java-app:latest # Placeholder image
+        image: localhost:5000/docker-hosted/my-java-app:latest # This will be replaced by Jenkins
+        # *** FIX: Tells Kubernetes to use the local image if it exists ***
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
+        # *** BEST PRACTICE: Health probes to check if the app is ready and alive ***
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 20
