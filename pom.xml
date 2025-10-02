@@ -64,7 +64,7 @@
                 <version>12.1.0</version>
                 <configuration>
                     <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
-                    <failBuildOnCVSS>false</failBuildOnCVSS>
+                    <failBuildOnCVSS>11</failBuildOnCVSS>
                 </configuration>
                 <executions>
                     <execution>
