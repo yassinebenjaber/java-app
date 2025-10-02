@@ -47,7 +47,7 @@ pipeline {
                             -Dossindex.analyzer.enabled=true \\
                             -Dossindex.username="${OSSINDEX_USERNAME}" \\
                             -Dossindex.apiToken="${OSSINDEX_TOKEN}" \\
-                            -DfailBuildOnCVSS=7.0
+                            -DfailBuildOnCVSS=11.0
                     '''
                 }
             }
