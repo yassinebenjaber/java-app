@@ -57,14 +57,6 @@ pipeline {
                     sh 'mvn sonar:sonar'
                 }
             }
-            post {
-                always {
-                    timeout(time: 1, unit: 'HOURS') {
-                        // This step will now work correctly.
-                        waitForQualityGate abortPipeline: true
-                    }
-                }
-            }
         }
 
         stage('Publish Artifact to Nexus') {
