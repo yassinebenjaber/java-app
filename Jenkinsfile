@@ -1,4 +1,3 @@
-// Jenkinsfile - Final Corrected Version
 pipeline {
     agent any
     tools {
@@ -6,6 +5,7 @@ pipeline {
     }
 
     environment {
+        // Global variables that are NOT secrets
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
@@ -39,7 +39,6 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
                                  string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
-                    // This command directly passes the credentials to Maven
                     sh '''
                         mvn org.owasp:dependency-check-maven:check \\
                             -DnvdApiKey="${NVD_API_KEY}" \\
