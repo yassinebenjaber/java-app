@@ -23,7 +23,6 @@
         <sonar.projectKey>my-first-java-app</sonar.projectKey>
         <sonar.organization>default</sonar.organization>
         <sonar.host.url>http://localhost:9000</sonar.host.url>
-        <sonar.login>${env.SONAR_TOKEN}</sonar.login>
     </properties>
 
     <dependencies>
@@ -48,13 +47,11 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
-
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.9.1.2184</version>
             </plugin>
-
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>

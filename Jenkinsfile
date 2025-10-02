@@ -6,7 +6,6 @@ pipeline {
     }
 
     environment {
-        // Global variables that are NOT secrets
         NEXUS_URL = 'localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
@@ -38,10 +37,9 @@ pipeline {
 
         stage('SCA Scan (OWASP Dependency Check)') {
             steps {
-                // This block securely injects credentials as shell environment variables
-                // and passes them directly to Maven using the -D flag. This is the fix.
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
                                  string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
+                    // This command directly passes the credentials to Maven
                     sh '''
                         mvn org.owasp:dependency-check-maven:check \\
                             -DnvdApiKey="${NVD_API_KEY}" \\
@@ -56,7 +54,6 @@ pipeline {
 
         stage('SAST Scan & Quality Gate (SonarQube)') {
             steps {
-                // Securely injects the SonarQube token and passes it directly to Maven.
                 withCredentials([string(credentialsId: 'sonarqube-token-id', variable: 'SONAR_TOKEN')]) {
                     sh 'mvn sonar:sonar -Dsonar.login="${SONAR_TOKEN}"'
                 }
