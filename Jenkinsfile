@@ -16,7 +16,7 @@ pipeline {
     }
 
     stages {
-        stage('Scan for Secrets & Static Analysis') {
+        stage('Secrets Scan + SAST/SCA') {
             parallel {
                 stage('Gitleaks') {
                     steps {
@@ -27,7 +27,7 @@ pipeline {
                         '''
                     }
                 }
-                stage('SAST & SCA') {
+                stage('SONARQUBE + OWASP Dependency Check') {
                     steps {
                         sh 'mvn clean install'
                         withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
@@ -49,7 +49,7 @@ pipeline {
             }
         }
 
-        stage('Publish Artifacts & Containerize') {
+        stage('Upload Artifact + Containerize') {
             steps {
                 withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                     // 1. Deploy the Maven artifact to Nexus
@@ -68,7 +68,7 @@ pipeline {
             }
         }
         
-        stage('Dynamic Analysis (DAST)') {
+        stage('DAST with OWASP ZAP') {
             steps {
                 sh "docker network create ${DAST_NETWORK} || true"
                 sh "docker run -d --rm --name ${DAST_TARGET_NAME} --network ${DAST_NETWORK} ${DOCKER_IMAGE_NAME}"
@@ -102,13 +102,13 @@ pipeline {
             }
         }
 
-        stage('Approval for Production') {
+        stage('Approval for Prod') {
             steps {
                 input message: 'All tests passed on Pre-Prod. Ready to deploy to Production?', submitter: 'admin'
             }
         }
 
-        stage('Deploy to Production') {
+        stage('Deploy to Prod') {
             steps {
                 script {
                     sh 'kubectl create namespace ${PROD_NAMESPACE} || true'
