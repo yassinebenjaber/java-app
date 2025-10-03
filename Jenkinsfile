@@ -93,8 +93,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo 'Stopping SonarQube to free up memory for Minikube...'
-                    sh 'sudo systemctl stop sonarqube'
+                    echo 'Stopping SonarQube container to free up memory for Minikube...'
+                    sh 'cd /vagrant && docker compose stop sonarqube'
                     
                     sh 'minikube status || minikube start --driver=docker'
                     sh 'eval $(minikube -p minikube docker-env)'
@@ -122,8 +122,8 @@ pipeline {
     post {
         always {
             script {
-                echo 'Restarting SonarQube service...'
-                sh 'sudo systemctl start sonarqube'
+                echo 'Restarting SonarQube container...'
+                sh 'cd /vagrant && docker compose start sonarqube'
             }
         }
     }
