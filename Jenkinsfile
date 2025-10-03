@@ -51,14 +51,14 @@ pipeline {
 
         stage('Upload Artifact + Containerize') {
             steps {
-                withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                    sh '''
-                        mvn deploy -Dmaven.test.skip=true --settings settings.xml
-                        docker build -t ${DOCKER_IMAGE_NAME} .
-                        trivy image --ignore-unfixed --severity CRITICAL ${DOCKER_IMAGE_NAME}
-                        echo "$NEXUS_PASS" | docker login http://localhost:5000 -u "$NEXUS_USER" --password-stdin
-                        docker push ${DOCKER_IMAGE_NAME}
-                    '''
+                script {
+                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                        sh 'mvn deploy -Dmaven.test.skip=true --settings settings.xml'
+                        sh "docker build -t ${DOCKER_IMAGE_NAME} ."
+                        sh "trivy image --ignore-unfixed --severity CRITICAL ${DOCKER_IMAGE_NAME}"
+                        sh "echo '${NEXUS_PASS}' | docker login http://localhost:5000 -u '${NEXUS_USER}' --password-stdin"
+                        sh "docker push ${DOCKER_IMAGE_NAME}"
+                    }
                 }
             }
         }
