@@ -68,7 +68,7 @@ pipeline {
                 sh "docker network create ${DAST_NETWORK} || true"
                 sh "docker run -d --rm --name ${DAST_TARGET_NAME} --network ${DAST_NETWORK} ${DOCKER_IMAGE_NAME}"
                 sleep 20
-                sh "docker run --rm --network ${DAST_NETWORK} owasp/zap2docker-stable zap-baseline.py -t http://${DAST_TARGET_NAME}:8080"
+                sh "docker run --rm --network ${DAST_NETWORK} zaproxy/zap-stable:2.16.1 zap-baseline.py -t http://${DAST_TARGET_NAME}:8080"
             }
             post {
                 always {
