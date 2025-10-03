@@ -12,17 +12,11 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/yassinebenjaber/java-app.git'
-            }
-        }
-
         stage('Scan for Secrets (Gitleaks)') {
             steps {
                 sh '''
-                    docker run --rm --name gitleaks-scanner \
-                        -v $PWD:/workspace \
+                    docker run --rm --name gitleaks-scanner \\
+                        -v $PWD:/workspace \\
                         zricethezav/gitleaks:latest detect --source /workspace --verbose --no-git
                 '''
             }
@@ -39,18 +33,18 @@ pipeline {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
                                  string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
                     sh '''
-                        mvn org.owasp:dependency-check-maven:check \
-                            -Dnvd.apiKey="${NVD_API_KEY}" \
-                            -Dossindex.analyzer.enabled=true \
-                            -Dossindex.username="${OSSINDEX_USERNAME}" \
-                            -Dossindex.apiToken="${OSSINDEX_TOKEN}" \
+                        mvn org.owasp:dependency-check-maven:check \\
+                            -Dnvd.apiKey="${NVD_API_KEY}" \\
+                            -Dossindex.analyzer.enabled=true \\
+                            -Dossindex.username="${OSSINDEX_USERNAME}" \\
+                            -Dossindex.apiToken="${OSSINDEX_TOKEN}" \\
                             -DfailBuildOnCVSS=11.0
                     '''
                 }
             }
         }
 
-        stage('SAST Scan & Quality Gate (SonarQube)') {
+        stage('SAST Scan (SonarQube)') {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh 'mvn sonar:sonar'
@@ -70,7 +64,18 @@ pipeline {
             steps {
                 script {
                     def customImage = docker.build(DOCKER_IMAGE_NAME, '.')
-                    sh "trivy image --severity CRITICAL ${DOCKER_IMAGE_NAME}"
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        sh "trivy image --exit-code 1 --format table --output trivy-report.txt --severity HIGH,CRITICAL ${DOCKER_IMAGE_NAME}"
+                    }
+                    if (currentBuild.currentResult == 'UNSTABLE') {
+                        def report = readFile 'trivy-report.txt'
+                        emailext (
+                            subject: "Vulnerability Alert for ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                            body: """<h1>Vulnerability Scan Report</h1><p>High or Critical vulnerabilities found.</p><pre>${report}</pre>""",
+                            to: "yassinejaber99@outlook.com",
+                            mimeType: 'text/html'
+                        )
+                    }
                 }
             }
         }
@@ -113,13 +118,13 @@ pipeline {
             }
         }
     }
-        post {
-             always {
-                script {
-                     echo 'Restarting SonarQube service..'
-                     sh 'sudo systemctl start sonarqube'
-                 }
-             }
-         }
+
+    post {
+        always {
+            script {
+                echo 'Restarting SonarQube service...'
+                sh 'sudo systemctl start sonarqube'
+            }
+        }
     }
 }
