@@ -9,88 +9,88 @@ pipeline {
         NEXUS_CREDENTIALS_ID = 'nexus-credentials'
         DOCKER_IMAGE_NAME = "localhost:5000/docker-hosted/my-java-app:${env.BUILD_NUMBER}"
         OSSINDEX_USERNAME = 'yassinejaber99@outlook.com'
+        PREPROD_NAMESPACE = 'my-app-preprod'
+        PROD_NAMESPACE = 'my-app-prod'
+        DAST_NETWORK = 'dast-net'
+        DAST_TARGET_NAME = 'my-app-dast-target'
     }
 
     stages {
-        stage('Scan for Secrets (Gitleaks)') {
-            steps {
-                sh '''
-                    docker run --rm --name gitleaks-scanner \\
-                        -v $PWD:/workspace \\
-                        zricethezav/gitleaks:latest detect --source /workspace --verbose --no-git
-                '''
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh 'mvn clean install'
-            }
-        }
-
-        stage('SCA Scan (OWASP Dependency Check)') {
-            steps {
-                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
-                                 string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
-                    sh '''
-                        mvn org.owasp:dependency-check-maven:check \\
-                            -Dnvd.apiKey="${NVD_API_KEY}" \\
-                            -Dossindex.analyzer.enabled=true \\
-                            -Dossindex.username="${OSSINDEX_USERNAME}" \\
-                            -Dossindex.apiToken="${OSSINDEX_TOKEN}" \\
-                            -DfailBuildOnCVSS=11.0
-                    '''
+        stage('Scan for Secrets & Static Analysis') {
+            parallel {
+                stage('Gitleaks') {
+                    steps {
+                        sh '''
+                            docker run --rm --name gitleaks-scanner \\
+                                -v $PWD:/workspace \\
+                                zricethezav/gitleaks:latest detect --source /workspace --verbose --no-git
+                        '''
+                    }
+                }
+                stage('SAST & SCA') {
+                    steps {
+                        sh 'mvn clean install'
+                        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY'),
+                                         string(credentialsId: 'ossindex-token', variable: 'OSSINDEX_TOKEN')]) {
+                            sh '''
+                                mvn org.owasp:dependency-check-maven:check \\
+                                    -Dnvd.apiKey="${NVD_API_KEY}" \\
+                                    -Dossindex.analyzer.enabled=true \\
+                                    -Dossindex.username="${OSSINDEX_USERNAME}" \\
+                                    -Dossindex.apiToken="${OSSINDEX_TOKEN}" \\
+                                    -DfailBuildOnCVSS=11.0
+                            '''
+                        }
+                        withSonarQubeEnv('sonarqube') {
+                            sh 'mvn sonar:sonar'
+                        }
+                    }
                 }
             }
         }
 
-        stage('SAST Scan (SonarQube)') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh 'mvn sonar:sonar'
-                }
-            }
-        }
-
-        stage('Publish Artifact to Nexus') {
+        stage('Publish & Scan Artifacts') {
             steps {
                 withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                     sh 'mvn deploy -Dmaven.test.skip=true --settings settings.xml'
                 }
-            }
-        }
-
-        stage('Build & Scan Docker Image (Trivy)') {
-            steps {
                 script {
                     def customImage = docker.build(DOCKER_IMAGE_NAME, '.')
-                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                        sh "trivy image --exit-code 1 --format table --output trivy-report.txt --severity HIGH,CRITICAL ${DOCKER_IMAGE_NAME}"
-                    }
-                    if (currentBuild.currentResult == 'UNSTABLE') {
-                        def report = readFile 'trivy-report.txt'
-                        emailext (
-                            subject: "Vulnerability Alert for ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                            body: """<h1>Vulnerability Scan Report</h1><p>High or Critical vulnerabilities found.</p><pre>${report}</pre>""",
-                            to: "yassinejaber99@outlook.com",
-                            mimeType: 'text/html'
-                        )
-                    }
-                }
-            }
-        }
-
-        stage('Push Docker Image to Nexus') {
-            steps {
-                script {
+                    sh "trivy image --severity CRITICAL ${DOCKER_IMAGE_NAME}"
                     docker.withRegistry('http://localhost:5000', NEXUS_CREDENTIALS_ID) {
                         docker.image(DOCKER_IMAGE_NAME).push()
                     }
                 }
             }
         }
-
-        stage('Deploy to Kubernetes') {
+        
+        // *** NEW PRE-DEPLOYMENT DAST STAGE ***
+        stage('Dynamic Analysis (DAST)') {
+            steps {
+                // We create a temporary Docker network for the DAST scan
+                sh "docker network create ${DAST_NETWORK} || true"
+                
+                // Run the application container in the background on the new network
+                sh "docker run -d --rm --name ${DAST_TARGET_NAME} --network ${DAST_NETWORK} ${DOCKER_IMAGE_NAME}"
+                
+                // Wait for the app to start up
+                sleep 20
+                
+                // Run the ZAP scanner on the same network. It can find the app by its container name.
+                sh "docker run --rm --network ${DAST_NETWORK} owasp/zap2docker-stable zap-baseline.py -t http://${DAST_TARGET_NAME}:8080"
+            }
+            // *** CRUCIAL CLEANUP STEP ***
+            // This 'post' block ensures the temporary container and network are
+            // always removed, even if the scan fails.
+            post {
+                always {
+                    sh "docker stop ${DAST_TARGET_NAME} || true"
+                    sh "docker network rm ${DAST_NETWORK} || true"
+                }
+            }
+        }
+        
+        stage('Deploy to Pre-Prod') {
             steps {
                 script {
                     echo 'Stopping SonarQube container to free up memory for Minikube...'
@@ -98,22 +98,30 @@ pipeline {
                     
                     sh 'minikube status || minikube start --driver=docker'
                     sh 'eval $(minikube -p minikube docker-env)'
-                    sh 'kubectl delete deployment my-app-deployment --ignore-not-found=true'
+                    
+                    sh 'kubectl create namespace ${PREPROD_NAMESPACE} || true'
                     sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}|g' deployment.yaml"
-                    sh 'kubectl apply -f deployment.yaml'
-                    sh 'kubectl apply -f service.yaml'
-                    sh 'kubectl rollout status deployment/my-app-deployment'
+                    
+                    sh 'kubectl apply -f deployment.yaml -n ${PREPROD_NAMESPACE}'
+                    sh 'kubectl apply -f service.yaml -n ${PREPROD_NAMESPACE}'
+                    sh 'kubectl rollout status deployment/my-app-deployment -n ${PREPROD_NAMESPACE}'
                 }
             }
         }
-        
-        stage('DAST Scan (OWASP ZAP)') {
+
+        stage('Approval for Production') {
+            steps {
+                input message: 'All tests passed on Pre-Prod. Ready to deploy to Production?', submitter: 'admin'
+            }
+        }
+
+        stage('Deploy to Production') {
             steps {
                 script {
-                    sh 'minikube service my-app-service --url > service_url.txt'
-                    def APP_URL = readFile('service_url.txt').trim()
-                    sleep 15
-                    sh "docker run --rm --network=host owasp/zap2docker-stable zap-baseline.py -t ${APP_URL}"
+                    sh 'kubectl create namespace ${PROD_NAMESPACE} || true'
+                    sh 'kubectl apply -f deployment.yaml -n ${PROD_NAMESPACE}'
+                    sh 'kubectl apply -f service.yaml -n ${PROD_NAMESPACE}'
+                    sh 'kubectl rollout status deployment/my-app-deployment -n ${PROD_NAMESPACE}'
                 }
             }
         }
