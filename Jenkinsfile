@@ -51,12 +51,14 @@ pipeline {
 
         stage('Publish & Scan Artifacts') {
             steps {
-                withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                    sh 'mvn deploy -Dmaven.test.skip=true --settings settings.xml'
-                }
                 script {
+                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                        sh 'mvn deploy -Dmaven.test.skip=true --settings settings.xml'
+                    }
+                    
                     def customImage = docker.build(DOCKER_IMAGE_NAME, '.')
                     sh "trivy image --severity CRITICAL ${DOCKER_IMAGE_NAME}"
+                    
                     docker.withRegistry('http://localhost:5000', NEXUS_CREDENTIALS_ID) {
                         docker.image(DOCKER_IMAGE_NAME).push()
                     }
@@ -64,24 +66,13 @@ pipeline {
             }
         }
         
-        // *** NEW PRE-DEPLOYMENT DAST STAGE ***
         stage('Dynamic Analysis (DAST)') {
             steps {
-                // We create a temporary Docker network for the DAST scan
                 sh "docker network create ${DAST_NETWORK} || true"
-                
-                // Run the application container in the background on the new network
                 sh "docker run -d --rm --name ${DAST_TARGET_NAME} --network ${DAST_NETWORK} ${DOCKER_IMAGE_NAME}"
-                
-                // Wait for the app to start up
                 sleep 20
-                
-                // Run the ZAP scanner on the same network. It can find the app by its container name.
                 sh "docker run --rm --network ${DAST_NETWORK} owasp/zap2docker-stable zap-baseline.py -t http://${DAST_TARGET_NAME}:8080"
             }
-            // *** CRUCIAL CLEANUP STEP ***
-            // This 'post' block ensures the temporary container and network are
-            // always removed, even if the scan fails.
             post {
                 always {
                     sh "docker stop ${DAST_TARGET_NAME} || true"
