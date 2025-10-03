@@ -113,4 +113,13 @@ pipeline {
             }
         }
     }
+        post {
+             always {
+                script {
+                     echo 'Restarting SonarQube service..'
+                     sh 'sudo systemctl start sonarqube'
+                 }
+             }
+         }
+    }
 }
