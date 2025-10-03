@@ -11,15 +11,17 @@ spec:
     metadata:
       labels:
         app: my-app
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
+        prometheus.io/path: '/actuator/prometheus'
     spec:
       containers:
       - name: my-app
-        image: localhost:5000/docker-hosted/my-java-app:latest # This will be replaced by Jenkins
-        # *** FIX: Tells Kubernetes to use the local image if it exists ***
+        image: localhost:5000/docker-hosted/my-java-app:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
-        # *** BEST PRACTICE: Health probes to check if the app is ready and alive ***
         readinessProbe:
           httpGet:
             path: /actuator/health/readiness
