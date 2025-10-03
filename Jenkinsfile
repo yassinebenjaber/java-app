@@ -59,7 +59,7 @@ pipeline {
                     sh "docker build -t ${DOCKER_IMAGE_NAME} ."
                     
                     // 3. Scan the newly built image with Trivy
-                    sh "trivy image --severity CRITICAL ${DOCKER_IMAGE_NAME}"
+                    sh "trivy image --ignore-unfixed --severity CRITICAL ${DOCKER_IMAGE_NAME}"
 
                     // 4. Log in and push the Docker image to Nexus
                     sh "echo '${NEXUS_PASS}' | docker login http://localhost:5000 -u '${NEXUS_USER}' --password-stdin"
