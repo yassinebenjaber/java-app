@@ -88,17 +88,15 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
+                    echo 'Stopping SonarQube to free up memory for Minikube...'
+                    sh 'sudo systemctl stop sonarqube'
+                    
                     sh 'minikube status || minikube start --driver=docker'
                     sh 'eval $(minikube -p minikube docker-env)'
-                    
-                    // Update deployment file with new image
+                    sh 'kubectl delete deployment my-app-deployment --ignore-not-found=true'
                     sh "sed -i 's|image: .*|image: ${DOCKER_IMAGE_NAME}|g' deployment.yaml"
-
-                    // Apply manifests
                     sh 'kubectl apply -f deployment.yaml'
                     sh 'kubectl apply -f service.yaml'
-
-                    // Check rollout of deployment
                     sh 'kubectl rollout status deployment/my-app-deployment'
                 }
             }
