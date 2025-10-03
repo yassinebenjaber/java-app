@@ -49,19 +49,21 @@ pipeline {
             }
         }
 
-        stage('Publish & Scan Artifacts') {
+        stage('Publish Artifacts & Containerize') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                        sh 'mvn deploy -Dmaven.test.skip=true --settings settings.xml'
-                    }
+                withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS_ID, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                    // 1. Deploy the Maven artifact to Nexus
+                    sh 'mvn deploy -Dmaven.test.skip=true --settings settings.xml'
+
+                    // 2. Build the Docker image using a raw shell command
+                    sh "docker build -t ${DOCKER_IMAGE_NAME} ."
                     
-                    def customImage = docker.build(DOCKER_IMAGE_NAME, '.')
+                    // 3. Scan the newly built image with Trivy
                     sh "trivy image --severity CRITICAL ${DOCKER_IMAGE_NAME}"
-                    
-                    docker.withRegistry('http://localhost:5000', NEXUS_CREDENTIALS_ID) {
-                        docker.image(DOCKER_IMAGE_NAME).push()
-                    }
+
+                    // 4. Log in and push the Docker image to Nexus
+                    sh "echo '${NEXUS_PASS}' | docker login http://localhost:5000 -u '${NEXUS_USER}' --password-stdin"
+                    sh "docker push ${DOCKER_IMAGE_NAME}"
                 }
             }
         }
@@ -127,4 +129,3 @@ pipeline {
         }
     }
 }
-
