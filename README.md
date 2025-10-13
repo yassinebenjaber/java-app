@@ -1,12 +1,15 @@
 # DevSecOps Pipeline Project
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![SonarQube](https://img.shields.io/badge/SAST-SonarQube-blue)]()
-[![Trivy](https://img.shields.io/badge/DAST-Trivy-orange)]()
-[![Nexus](https://img.shields.io/badge/Artifacts-Nexus-red)]()
-[![Kubernetes](https://img.shields.io/badge/K8s-Deployment-blueviolet)]()
-[![Prometheus](https://img.shields.io/badge/Monitoring-Prometheus-yellow)]()
-[![Grafana](https://img.shields.io/badge/Monitoring-Grafana-orange)]()
+[![Code Scanning](https://img.shields.io/badge/Code%20Scanning-GitLeaks-red)](https://github.com/zricethezav/gitleaks)
+[![SCA](https://img.shields.io/badge/SCA-OWASP_Dependency_Check-blue)](https://owasp.org/www-project-dependency-check/)
+[![SAST](https://img.shields.io/badge/SAST-SonarQube-brightgreen)](https://www.sonarqube.org/)
+[![IaC Security](https://img.shields.io/badge/IaC-Checkov-orange)](https://www.checkov.io/)
+[![Artifact Management](https://img.shields.io/badge/Artifacts-Nexus-red)](https://help.sonatype.com/repomanager3)
+[![Container Scanning](https://img.shields.io/badge/Container-Trivy-purple)](https://aquasec.com/trivy)
+[![DAST](https://img.shields.io/badge/DAST-OWASP_ZAP-yellow)](https://www.zaproxy.org/)
+[![Kubernetes](https://img.shields.io/badge/Deployment-Kubernetes-blueviolet)](https://kubernetes.io/)
+[![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus%20%26%20Grafana-lightgrey)](https://prometheus.io/)
+
 
 > End-to-end **DevSecOps pipeline** automating security, artifact management, containerization, and Minikube deployment.
 
